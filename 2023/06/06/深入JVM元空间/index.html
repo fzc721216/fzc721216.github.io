@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="JVM,Metaspace," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="简介JDK8之前，一直有一个永久代存在，叫 PermGen，（永久代与元空间的不同之处在于，永久代使用的JVM虚拟机的内存，而元空间使用的是系统的本地内存） 内存上它是挨着堆的。为了垃圾回收方便，HotSpot 在永久代上一直是使用老年代的垃圾回收算法，永久代主要存放以下数据：  JVM internal representation of classes and their metadata J">
+<meta property="og:type" content="article">
+<meta property="og:title" content="深入JVM元空间">
+<meta property="og:url" content="http://example.com/2023/06/06/%E6%B7%B1%E5%85%A5JVM%E5%85%83%E7%A9%BA%E9%97%B4/index.html">
+<meta property="og:site_name" content="fzc721216">
+<meta property="og:description" content="简介JDK8之前，一直有一个永久代存在，叫 PermGen，（永久代与元空间的不同之处在于，永久代使用的JVM虚拟机的内存，而元空间使用的是系统的本地内存） 内存上它是挨着堆的。为了垃圾回收方便，HotSpot 在永久代上一直是使用老年代的垃圾回收算法，永久代主要存放以下数据：  JVM internal representation of classes and their metadata J">
+<meta property="og:locale">
+<meta property="og:image" content="http://example.com/source/_posts/%E6%B7%B1%E5%85%A5JVM%E5%85%83%E7%A9%BA%E9%97%B4/metaspace-vslist.png">
+<meta property="og:image" content="http://example.com/source/_posts/%E6%B7%B1%E5%85%A5JVM%E5%85%83%E7%A9%BA%E9%97%B4/metaspace-vsnode-multiple-loaders.png">
+<meta property="og:image" content="http://example.com/source/_posts/%E6%B7%B1%E5%85%A5JVM%E5%85%83%E7%A9%BA%E9%97%B4/metaspace-class-metadata.png">
+<meta property="article:published_time" content="2023-06-06T11:03:51.000Z">
+<meta property="article:modified_time" content="2024-06-06T12:01:18.463Z">
+<meta property="article:author" content="fzc">
+<meta property="article:tag" content="JVM">
+<meta property="article:tag" content="Metaspace">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/source/_posts/%E6%B7%B1%E5%85%A5JVM%E5%85%83%E7%A9%BA%E9%97%B4/metaspace-vslist.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '',
+    scheme: 'Gemini',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://example.com/2023/06/06/深入JVM元空间/"/>
+
+
+
+
+
+  <title>深入JVM元空间 | fzc721216</title>
+  
+
+
+
+
+
+
+
+
+<meta name="generator" content="Hexo 7.2.0"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">fzc721216</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/06/06/%E6%B7%B1%E5%85%A5JVM%E5%85%83%E7%A9%BA%E9%97%B4/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="fzc721216">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">深入JVM元空间</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2023-06-06T19:03:51+08:00">
+                2023-06-06
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/JVM/" itemprop="url" rel="index">
+                    <span itemprop="name">JVM</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h2><p>JDK8之前，一直有一个永久代存在，叫 PermGen，（永久代与元空间的不同之处在于，永久代使用的JVM虚拟机的内存，而元空间使用的是系统的本地内存） 内存上它是挨着堆的。为了垃圾回收方便，HotSpot 在永久代上一直是使用老年代的垃圾回收算法，永久代主要存放以下数据：</p>
+<ul>
+<li>JVM internal representation of classes and their metadata JVM内部表示数据</li>
+<li>Class statics 类信息</li>
+<li>Interned strings    字符串常量</li>
+</ul>
+<p>在JDK7时，一部分数据被移动，类信息和字符串常量池被移动到了堆里，还有一些数据被移动到native memory里。JDK8永久代被完全舍弃。Metaspace 区域位于堆外，所以它的最大内存大小取决于系统内存，而不是堆大小。</p>
+<h2 id="正文"><a href="#正文" class="headerlink" title="正文"></a>正文</h2><h5 id="什么时候分配-Metaspace-空间"><a href="#什么时候分配-Metaspace-空间" class="headerlink" title="什么时候分配 Metaspace 空间"></a>什么时候分配 Metaspace 空间</h5><p>当一个类被加载时，它的类加载器会负责在 Metaspace 中分配空间用于存放这个类的元数据。<br>分配给一个类的空间，是归属于这个类的类加载器的，只有当这个类加载器卸载的时候，这个空间才会被释放。</p>
+<h5 id="什么时候释放-Metaspace-空间"><a href="#什么时候释放-Metaspace-空间" class="headerlink" title="什么时候释放 Metaspace 空间"></a>什么时候释放 Metaspace 空间</h5><p>所以，只有当这个类加载器加载的所有类都没有存活的对象，并且没有到达这些类和类加载器的引用时，相应的 Metaspace 空间才会被 GC。 释放<br>Metaspace 可能在两种情况下触发 GC：</p>
+<p>1、分配空间时：虚拟机维护了一个阈值，如果 Metaspace 的空间大小超过了这个阈值，那么在新的空间分配申请时，虚拟机首先会通过收集可以卸载的类加载器来达到复用空间的目的，而不是扩大 Metaspace 的空间，这个时候会触发 GC。这个阈值会上下调整，和 Metaspace 已经占用的操作系统内存保持一个距离。</p>
+<p>2、碰到 Metaspace OOM：Metaspace 的总使用空间达到了 MaxMetaspaceSize 设置的阈值，或者 Compressed Class Space 被使用光了</p>
+<h5 id="内存通常会被保留"><a href="#内存通常会被保留" class="headerlink" title="内存通常会被保留"></a>内存通常会被保留</h5><p>释放 Metaspace 的空间，并不意味着将这部分空间还给系统内存，这部分空间通常会被 JVM 保留下来。<br>这部分被保留的空间有多大，取决于 Metaspace 的碎片化程度。另外，Metaspace 中有一部分区域 Compressed Class Space 是一定不会还给操作系统的。</p>
+<h5 id="JVM内部实现"><a href="#JVM内部实现" class="headerlink" title="JVM内部实现"></a>JVM内部实现</h5><p>Metaspace 在实现上分为多层。最底层，负责向操作系统申请大块的内存；中间的一层，负责分出一小块一小块给每个类加载器；最顶层，类加载器负责把这些申请到的内存块用来存放 class metadata。</p>
+<h6 id="最底层-space-list"><a href="#最底层-space-list" class="headerlink" title="最底层 space list"></a>最底层 space list</h6><p>在最底层，JVM 通过 mmap(3) 接口向操作系统申请内存映射，在 64 位平台上，每次申请 2MB 空间。每次申请过来的内存区域，放到一个链表中 VirtualSpaceList，作为其中的一个 Node.一个 Node 是 2MB 的空间，前面说了在使用的时候再向操作系统申请实际的内存，但是频繁的系统调用会降低性能，所以 Node 内部需要维护一个水位线，当 Node 内已使用内存快达到水位线的时候，向操作系统要新的内存页。并且相应地提高水位线。<br>直到一个 Node 被完全用完，会分配一个新的 Node，并且将其加入到链表中，老的 Node 就 “退休” 了。下图中，前面的三个 Node 就是退休状态了。<br>从一个 Node 中分配内存，每一块称为 MetaChunk，chunk 有三种规格，在 64 位系统中分别为 1K、4K、64K。<img src="/source/_posts/%E6%B7%B1%E5%85%A5JVM%E5%85%83%E7%A9%BA%E9%97%B4/metaspace-vslist.png" alt="图片" title="title">Node 内部的一个个 MetaChunk 是分配给每个类加载器的。所以一个 Node 通常由分配给多个类加载器的 chunks 组成<img src="/source/_posts/%E6%B7%B1%E5%85%A5JVM%E5%85%83%E7%A9%BA%E9%97%B4/metaspace-vsnode-multiple-loaders.png" alt="图片" title="title"><br>当一个类加载器和它加载的所有的类都卸载的时候，它占用的 chunks 就会加入到一个全局的空闲列表中.这些 chunks 会被复用：如果其他的类加载器加载新的类，它可能就会得到一个空闲列表中的 chunk，而不是去 Node 中申请一个新的 chunk。如果刚好把整个 Node 都清空了，那么这整个 Node 的内存会直接还给操作系统</p>
+<h6 id="中间层-chunk"><a href="#中间层-chunk" class="headerlink" title="中间层 chunk"></a>中间层 chunk</h6><ul>
+<li>通常，一个标准的类加载器在第一次申请空间时，会得到一个 4K 的 chunk，直到它达到了一个随意设置的阈值（4），此时分配器失去了耐心，之后会一次性给它一个 64K 的大 chunk。</li>
+<li>bootstrap classloader 是一个公认的会加载大量的类的加载器，所以分配器会给它一个巨大的 chunk，一开始就会给它 4M。可以通过 InitialBootClassLoaderMetaspaceSize 进行调优。</li>
+<li>反射类类加载器 (jdk.internal.reflect.DelegatingClassLoader) 和匿名类类加载器只会加载一个类，所以一开始只会给它们一个非常小的 chunk（1K），因为给它们太多就是一种浪费。</li>
+</ul>
+<h6 id="最顶层-block"><a href="#最顶层-block" class="headerlink" title="最顶层 block"></a>最顶层 block</h6><p>在中间层基础上再次分配</p>
+<h6 id="回收"><a href="#回收" class="headerlink" title="回收"></a>回收</h6><p>对于一个空闲的 Node 来说，拥有其上面的 chunks 的所有的类加载器必然都是被卸载了的。</p>
+<p>至于这个情况是否可能发生，主要就是取决于碎片化：</p>
+<p>一个 Node 是 2M，chunks 的大小为 1K, 4K 或 64K，所以通常一个 Node 上有约 150-200 个 chunks，如果这些 chunks 全部由同一个类加载器拥有，回收这个类加载器就可以一次性回收这个 Node，并且把它的空间还给操作系统。</p>
+<p>但是，如果这些 chunks 分配给不同的类加载器，每个类加载器都有不同的生命周期，那么什么都不会被释放。这也许就是在告诉我们，要小心对待大量的小的类加载器，如那些负责加载匿名类或反射类的加载器。</p>
+<h6 id="Compressed-Class-Space"><a href="#Compressed-Class-Space" class="headerlink" title="Compressed Class Space"></a>Compressed Class Space</h6><p>在 64 位平台上，HotSpot 使用了两个压缩优化技术，压缩对象指针 (“CompressedOops”) 和 压缩指针。压缩指针，指的是在 64 位的机器上，使用 32 位的指针来访问数据（堆中的对象或 Metaspace 中的元数据）的一种方式。</p>
+<p>这样有很多的好处，比如 32 位的指针占用更小的内存，可以更好地使用缓存，在有些平台，还可以使用到更多的寄存器。</p>
+<p>当然，在 64 位的机器中，最终还是需要一个 64 位的地址来访问数据的，所以这个 32 位的值是相对于一个基准地址的值。<br>由于 32 位地址只能访问到 4G 的空间，所以最大只允许 4G 的 Klass 地址。这项限制也意味着，JVM 需要向 Metaspace 分配一个连续的地址空间。只有 Klass 结构有这个限制，对于其他的 class metadata 没有这个必要: 因为只有 Klass 实例是通过 Java 对象 header  中的压缩指针访问的。其他的 metadata 都是通过 64 位的地址进行访问的，所以它们可以被放到任意的地址上。</p>
+<p>所以，我们决定将 Metaspace 分为两个区域：non-class part 和 class part。</p>
+<p>class part：存放 Klass 对象，需要一个连续的不超过 4G 的内存<br>non-class part：包含其他的所有 metadata。class part 被称作 Compressed Class Space</p>
+<p>在 Class Space 和 Non-Class Space 中，分别都有 VirtualSpaceList 和 ChunkManager 两个结构。<br>但是对于 Class Space，既然我们需要一个连续的空间我们不能使用一个链表来存放所有的 Node，所以这个链表退化为只有一个节点，并且不能扩展。这个 Node 就是 compressed class space，和 Non-Class Space 中的 Node 相比，它可是巨大无比。</p>
+<h6 id="参数"><a href="#参数" class="headerlink" title="参数"></a>参数</h6><p>-XX:+UseCompressedOops 允许对象指针压缩。</p>
+<p>-XX:+UseCompressedClassPointers  允许类指针压缩。</p>
+<p>它们默认都是开启的，可以手动关闭它们。<br>如果不允许类指针压缩，那么将没有 compressed class space 这个空间，并且-XX:CompressedClassSpaceSize 这个参数无效。</p>
+<p>-XX:-UseCompressedClassPointers 需要搭配 -XX:+UseCompressedOops，但是反过来不是: 我们可以只压缩对象指针，不压缩类指针。<br>对象指针压缩要求堆小于 32G，所以如果堆大于等于 32G，那么对象指针压缩和类指针压缩都会被关闭，所以堆内存一般不要配大于32G。CompressedClassSpaceSize<br>在启动的时候就限制 Class Space 的大小，默认值是 1G，启动后不可以修改</p>
+<h6 id="一个类大概需要多大的-Metaspace-空间"><a href="#一个类大概需要多大的-Metaspace-空间" class="headerlink" title="一个类大概需要多大的 Metaspace 空间"></a>一个类大概需要多大的 Metaspace 空间</h6><p><img src="/source/_posts/%E6%B7%B1%E5%85%A5JVM%E5%85%83%E7%A9%BA%E9%97%B4/metaspace-class-metadata.png" alt="图片" title="title"><br>Class Space：<br>最大的一部分是 Klass 结构，它是固定大小的。</p>
+<p>然后紧跟着两个可变大小的 vtable 和 itable，前者由类中方法的数量决定，后者由这个类所实现接口的方法数量决定。</p>
+<p>随后是一个 map，记录了类中引用的 Java 对象的地址，尽管该结构一般都很小，不过也是可变的。</p>
+<p>vtable 和 itable 通常也很小，但是对于一些巨大的类，它们也可以很大，一个有 30000 个方法的类，vtable 的大小会达到 240k，如果类派生自一个拥有 30000 个方法的接口，也是同理。但是这些都是测试案例，除了自动生成代码，你从来不会看到这样的类。</p>
+<p>Non-Class Space:<br>这个区域有很多的东西，下面这些占用了最多的空间：</p>
+<ul>
+<li><p>常量池，可变大小；</p>
+</li>
+<li><p>每个成员方法的 metadata：ConstMethod 结构，包含了好几个可变大小的内部结构，如方法字节码、局部变量表、异常表、参数信息、方法签名等；</p>
+</li>
+<li><p>运行时数据，用来控制 JIT 的行为；</p>
+</li>
+<li><p>注解</p>
+</li>
+</ul>
+<p>对于正常的类（我们假设通过 bootstrap 和 app 加载的类是正常的），我可以得到平均每个类需要约 5-7k 的 Non-Class Space 和 600-900 bytes 的 Class Space。<br>匿名类要小得多，但是也有一个有趣的事情，Class 和 Non-Class Space 之间的比例，相对的，我们需要更多的 Class Space。这也不奇怪，因为诸如 Lambda 类都是很小的，但是它的 Klass 结构不可能小于 sizeof(Klass)(Klass大小固定)。所以，我们得到 1k Non-Class Space 和 0.5k Class Space。</p>
+<h6 id="建议"><a href="#建议" class="headerlink" title="建议"></a>建议</h6><p>MetaspaceSize和MaxMetaspaceSize设置一样大；<br>具体设置多大，建议稳定运行一段时间后通过jstat -gc pid确认且这个值大一些，对于大部分项目256m即可。</p>
+<h5 id="相关参数"><a href="#相关参数" class="headerlink" title="相关参数"></a>相关参数</h5><p>-XX:MetaspaceSize&#x3D;N ：这个参数是初始化的Metaspace大小，该值越大触发Metaspace GC的时机就越晚。随着GC的到来，虚拟机会根据实际情况调控Metaspace的大小，可能增加上线也可能降低。在默认情况下，这个值大小根据不同的平台在12M到20M浮动。使用java -XX:+PrintFlagsInitial命令查看本机的初始化参数，-XX:Metaspacesize为21810376B（大约20.8M）。</p>
+<p>-XX:MaxMetaspaceSize&#x3D;N ：这个参数用于限制Metaspace增长的上限，防止因为某些情况导致Metaspace无限的使用本地内存，影响到其他程序。默认无上限。</p>
+<p>-XX:MinMetaspaceFreeRatio&#x3D;N ：当进行过Metaspace GC之后，会计算当前Metaspace的空闲空间比，如果空闲比小于这个参数，那么虚拟机将增长Metaspace的大小。在本机该参数的默认值为40，也就是40%。设置该参数可以控制Metaspace的增长的速度，太小的值会导致Metaspace增长的缓慢，Metaspace的使用逐渐趋于饱和，可能会影响之后类的加载。而太大的值会导致Metaspace增长的过快，浪费内存。</p>
+<p>-XX:MaxMetasaceFreeRatio&#x3D;N ：当进行过Metaspace GC之后， 会计算当前Metaspace的空闲空间比，如果空闲比大于这个参数，那么虚拟机会释放Metaspace的部分空间。在本机该参数的默认值为70，也就是70%。</p>
+<p>-XX:MaxMetaspaceExpansion&#x3D;N ：Metaspace增长时的最大幅度。在本机上该参数的默认值为5452592B（大约为5MB）。</p>
+<p>-XX:MinMetaspaceExpansion&#x3D;N ：Metaspace增长时的最小幅度。在本机上该参数的默认值为340784B（大约330KB）。<br>（还有一些参数下面提）</p>
+<p>-XX:CompressedClassSpaceSize：Metaspace 中的 Compressed Class Space 的最大允许内存，默认值是 1G，这部分会在 JVM 启动的时候向操作系统申请 1G 的虚拟地址映射</p>
+<p>参考：<a target="_blank" rel="noopener" href="https://www.javadoop.com/post/metaspace">https://www.javadoop.com/post/metaspace</a><br><a target="_blank" rel="noopener" href="https://www.cnblogs.com/duanxz/p/10276603.html">https://www.cnblogs.com/duanxz/p/10276603.html</a></p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/JVM/" rel="tag"># JVM</a>
+          
+            <a href="/tags/Metaspace/" rel="tag"># Metaspace</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2024/06/06/javaagent%E6%B5%85%E6%9E%90/" rel="prev" title="javaagent浅析">
+                javaagent浅析 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name"></p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%80%E4%BB%8B"><span class="nav-number">1.</span> <span class="nav-text">简介</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%AD%A3%E6%96%87"><span class="nav-number">2.</span> <span class="nav-text">正文</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E4%BB%80%E4%B9%88%E6%97%B6%E5%80%99%E5%88%86%E9%85%8D-Metaspace-%E7%A9%BA%E9%97%B4"><span class="nav-number">2.0.0.1.</span> <span class="nav-text">什么时候分配 Metaspace 空间</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E4%BB%80%E4%B9%88%E6%97%B6%E5%80%99%E9%87%8A%E6%94%BE-Metaspace-%E7%A9%BA%E9%97%B4"><span class="nav-number">2.0.0.2.</span> <span class="nav-text">什么时候释放 Metaspace 空间</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E5%86%85%E5%AD%98%E9%80%9A%E5%B8%B8%E4%BC%9A%E8%A2%AB%E4%BF%9D%E7%95%99"><span class="nav-number">2.0.0.3.</span> <span class="nav-text">内存通常会被保留</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#JVM%E5%86%85%E9%83%A8%E5%AE%9E%E7%8E%B0"><span class="nav-number">2.0.0.4.</span> <span class="nav-text">JVM内部实现</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#%E6%9C%80%E5%BA%95%E5%B1%82-space-list"><span class="nav-number">2.0.0.4.1.</span> <span class="nav-text">最底层 space list</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#%E4%B8%AD%E9%97%B4%E5%B1%82-chunk"><span class="nav-number">2.0.0.4.2.</span> <span class="nav-text">中间层 chunk</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#%E6%9C%80%E9%A1%B6%E5%B1%82-block"><span class="nav-number">2.0.0.4.3.</span> <span class="nav-text">最顶层 block</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#%E5%9B%9E%E6%94%B6"><span class="nav-number">2.0.0.4.4.</span> <span class="nav-text">回收</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#Compressed-Class-Space"><span class="nav-number">2.0.0.4.5.</span> <span class="nav-text">Compressed Class Space</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#%E5%8F%82%E6%95%B0"><span class="nav-number">2.0.0.4.6.</span> <span class="nav-text">参数</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#%E4%B8%80%E4%B8%AA%E7%B1%BB%E5%A4%A7%E6%A6%82%E9%9C%80%E8%A6%81%E5%A4%9A%E5%A4%A7%E7%9A%84-Metaspace-%E7%A9%BA%E9%97%B4"><span class="nav-number">2.0.0.4.7.</span> <span class="nav-text">一个类大概需要多大的 Metaspace 空间</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#%E5%BB%BA%E8%AE%AE"><span class="nav-number">2.0.0.4.8.</span> <span class="nav-text">建议</span></a></li></ol></li><li class="nav-item nav-level-5"><a class="nav-link" href="#%E7%9B%B8%E5%85%B3%E5%8F%82%E6%95%B0"><span class="nav-number">2.0.0.5.</span> <span class="nav-text">相关参数</span></a></li></ol></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">fzc</span>
+
+  
+</div>
+
+
+
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
