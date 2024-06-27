@@ -86,14 +86,14 @@
 <meta property="og:site_name" content="fzc721216">
 <meta property="og:description" content="如何做线程池的监控数据采集 getCorePoolSize()：获取核心线程数； getMaximumPoolSize：获取最大线程数； getQueue()：获取线程池中的阻塞队列，并通过阻塞队列中的方法获取队列长度、元素个数等； getPoolSize()：获取线程池中的工作线程数（包括核心线程和非核心线程）； getActiveCount()：获取活跃线程数，也就是正在执行任务的线程； ge">
 <meta property="og:locale">
-<meta property="og:image" content="http://example.com/source/_posts/%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%8A%A8%E6%80%81%E5%8C%96%E4%B8%8E%E7%9B%91%E6%8E%A7/23a44974ff68a08261fb675242b83648181953.png">
+<meta property="og:image" content="http://example.com/2024/04/07/%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%8A%A8%E6%80%81%E5%8C%96%E4%B8%8E%E7%9B%91%E6%8E%A7/23a44974ff68a08261fb675242b83648181953.png">
 <meta property="article:published_time" content="2024-04-07T01:09:16.000Z">
-<meta property="article:modified_time" content="2024-06-07T02:38:19.655Z">
+<meta property="article:modified_time" content="2024-06-27T03:25:46.733Z">
 <meta property="article:author" content="fzc">
 <meta property="article:tag" content="Java">
 <meta property="article:tag" content="线程池">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://example.com/source/_posts/%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%8A%A8%E6%80%81%E5%8C%96%E4%B8%8E%E7%9B%91%E6%8E%A7/23a44974ff68a08261fb675242b83648181953.png">
+<meta name="twitter:image" content="http://example.com/2024/04/07/%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%8A%A8%E6%80%81%E5%8C%96%E4%B8%8E%E7%9B%91%E6%8E%A7/23a44974ff68a08261fb675242b83648181953.png">
 
 
 
@@ -370,7 +370,9 @@
 <li>将所有的ThreadPool托管给Spring，然后加上自定义注解，最后在项目启动后获取带有自定义注解的bean</li>
 <li>获取到bean后，使用 Metrics.gauge 对指标进行注册</li>
 </ul>
-<h5 id="业界线程池参数配置方案"><a href="#业界线程池参数配置方案" class="headerlink" title="业界线程池参数配置方案"></a>业界线程池参数配置方案</h5><p>美团文章里的：<br><img src="/source/_posts/%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%8A%A8%E6%80%81%E5%8C%96%E4%B8%8E%E7%9B%91%E6%8E%A7/23a44974ff68a08261fb675242b83648181953.png" alt="图片" title="title"><br>1 公式一<br>CPU 密集型应用，线程池大小设置为 N + 1；IO 密集型应用，线程池大小设置为 2N。这种估算方式网上比较常见，但是实际应用中很难界定到底什么是CPU 密集型应用、什么是IO 密集型应用。</p>
+<h5 id="业界线程池参数配置方案"><a href="#业界线程池参数配置方案" class="headerlink" title="业界线程池参数配置方案"></a>业界线程池参数配置方案</h5><p>美团文章里的：</p>
+<img src="/2024/04/07/%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%8A%A8%E6%80%81%E5%8C%96%E4%B8%8E%E7%9B%91%E6%8E%A7/23a44974ff68a08261fb675242b83648181953.png" class="">
+<p>1 公式一<br>CPU 密集型应用，线程池大小设置为 N + 1；IO 密集型应用，线程池大小设置为 2N。这种估算方式网上比较常见，但是实际应用中很难界定到底什么是CPU 密集型应用、什么是IO 密集型应用。</p>
 <p>2 公式二<br>core &#x3D; tps（每秒能完成的事务数 &#x3D; 并发量 &#x2F; 平均响应时间）* time，max &#x3D; tps * time * (1.7 ~ 2)，该估算方式考虑到了业务场景，但是业务流量往往是不均匀分布的</p>
 <p>3 公式三<br>线程数 &#x3D; （1 + 线程等待时间&#x2F;线程CPU时间 * 目标CPU的使用率 * 处理器核心数。例如：CPU Time 0.5ms，Wait Time 1.5ms，CPU使用率是90%，CPU核心数为8，(1 + 1.5&#x2F;0.5) * 90% * 8 &#x3D; 28.8。可以结合ThreadMXBean，计算出线程CPU时间、线程等待时间。</p>
 <p>4 公式四<br>队列大小：queueSize &#x3D; (coreSize&#x2F;taskCost)*resTime。假设每个任务执行耗时，100ms，系统能够忍受的最大响应时间为2秒，线程池大小为32，那么队列大小可以设定为640</p>

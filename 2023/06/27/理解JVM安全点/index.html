@@ -86,15 +86,15 @@
 <meta property="og:site_name" content="fzc721216">
 <meta property="og:description" content="探究安全点机制的起初是因为看了得物的一篇技术文章：https:&#x2F;&#x2F;tech.dewu.com&#x2F;article?id&#x3D;47 简介总结一下初识安全点学到的知识点：  JVM GC时需要让用户线程在安全点处停顿下来（Stop The World）抢先式中断：所有线程停止，没到安全点的继续运行到安全点。主动式中断的思想是当GC需要中断线程时，不直接对线程操作，仅仅简单地设置一个标志位，各个线程执行过程时不">
 <meta property="og:locale">
-<meta property="og:image" content="http://example.com/source/_posts/%E7%90%86%E8%A7%A3JVM%E5%AE%89%E5%85%A8%E7%82%B9/image1.png">
-<meta property="og:image" content="http://example.com/source/_posts/%E7%90%86%E8%A7%A3JVM%E5%AE%89%E5%85%A8%E7%82%B9/image.png">
+<meta property="og:image" content="http://example.com/2023/06/27/%E7%90%86%E8%A7%A3JVM%E5%AE%89%E5%85%A8%E7%82%B9/image1.png">
+<meta property="og:image" content="http://example.com/2023/06/27/%E7%90%86%E8%A7%A3JVM%E5%AE%89%E5%85%A8%E7%82%B9/image.png">
 <meta property="article:published_time" content="2023-06-27T01:44:56.000Z">
-<meta property="article:modified_time" content="2024-06-27T02:23:17.160Z">
+<meta property="article:modified_time" content="2024-06-27T03:27:40.374Z">
 <meta property="article:author" content="fzc">
 <meta property="article:tag" content="JVM">
 <meta property="article:tag" content="SafePoint">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://example.com/source/_posts/%E7%90%86%E8%A7%A3JVM%E5%AE%89%E5%85%A8%E7%82%B9/image1.png">
+<meta name="twitter:image" content="http://example.com/2023/06/27/%E7%90%86%E8%A7%A3JVM%E5%AE%89%E5%85%A8%E7%82%B9/image1.png">
 
 
 
@@ -352,7 +352,9 @@
 <li>JVM GC时需要让用户线程在安全点处停顿下来（Stop The World）抢先式中断：所有线程停止，没到安全点的继续运行到安全点。主动式中断的思想是当GC需要中断线程时，不直接对线程操作，仅仅简单地设置一个标志位，各个线程执行过程时不停地主动去轮询这个标志，一旦发现中断标志为真就自己在最近的安全点上主动中断挂起</li>
 <li>JVM会在方法调用、循环跳转、异常跳转等处放置安全点<br>后来发现，经过一些线上问题和网上看到有关安全点有趣的示例，发现安全点其实也不简单，不只有GC才会用到安全点</li>
 </ul>
-<h3 id="案例"><a href="#案例" class="headerlink" title="案例"></a>案例</h3><p><img src="/source/_posts/%E7%90%86%E8%A7%A3JVM%E5%AE%89%E5%85%A8%E7%82%B9/image1.png" alt="图片"><br><img src="/source/_posts/%E7%90%86%E8%A7%A3JVM%E5%AE%89%E5%85%A8%E7%82%B9/image.png" alt="图片"><br>从执行结果看，主线程在启动两个线程后进入睡眠状态，代码中指定睡眠时间为 1s，但是主线程却在 3s 多之后才睡眠结束。是什么导致了主线程睡过头了呢，从结果来看主线程睡觉结束时间和子线程结束时间是一致的。所以，我们有理由怀疑主线程没有按时提前结束应该是被两个子线程阻塞了。<br>原因：由于VMThread的某些操作需要STW，主线程在sleep结束前进入了JVM全局安全点，然后主线程要等待其他线程全部进入安全点，所以主线程被长时间没有进入安全点的其他线程给阻塞了。</p>
+<h3 id="案例"><a href="#案例" class="headerlink" title="案例"></a>案例</h3><img src="/2023/06/27/%E7%90%86%E8%A7%A3JVM%E5%AE%89%E5%85%A8%E7%82%B9/image1.png" class="">
+<img src="/2023/06/27/%E7%90%86%E8%A7%A3JVM%E5%AE%89%E5%85%A8%E7%82%B9/image.png" class="">
+<p>从执行结果看，主线程在启动两个线程后进入睡眠状态，代码中指定睡眠时间为 1s，但是主线程却在 3s 多之后才睡眠结束。是什么导致了主线程睡过头了呢，从结果来看主线程睡觉结束时间和子线程结束时间是一致的。所以，我们有理由怀疑主线程没有按时提前结束应该是被两个子线程阻塞了。<br>原因：由于VMThread的某些操作需要STW，主线程在sleep结束前进入了JVM全局安全点，然后主线程要等待其他线程全部进入安全点，所以主线程被长时间没有进入安全点的其他线程给阻塞了。</p>
 <h3 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h3><p>添加JVM打印安全点日志参数-XX:+PrintSafepointStatistics后再执行上面的实例代码，可以从安全点日志中看到，JVM想要执行no vm operation，这个操作需要线程进入安全点，整个期间有12个线程，正在运行的线程有两个，需要等待这两个线程进入安全点，等待耗时2251ms。</p>
 <p>关于no vm operation:<br>在 JVM 正常运行的时候，如果设置了进入安全点的间隔，就会隔一段时间判断是否有代码缓存要清理，如果有，会进入安全点。这个触发条件不是 VM 操作，所以会将 _vmop_type 设置成-1，输出日志的时候打印对应的 「no vm operation」，也就是我们看到的安全点日志。</p>
 <p>在 VM 操作为空的情况下，只要满足以下 3 个条件，也是会进入安全点的：</p>

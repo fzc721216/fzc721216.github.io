@@ -86,14 +86,14 @@
 <meta property="og:site_name" content="fzc721216">
 <meta property="og:description" content="JIT的执行过程Java的执行过程整体可以分为两个部分，第一步由javac将源码编译成字节码，在这个过程中会进行词法分析、语法分析、语义分析，编译原理中这部分的编译称为前端编译。接下来无需编译直接逐条将字节码解释执行，在解释执行的过程中，虚拟机同时对程序运行的信息进行收集，在这些信息的基础上，编译器会逐渐发挥作用，它会进行后端编译——把字节码编译成机器码，但不是所有的代码都会被编译，只有被JVM认">
 <meta property="og:locale">
-<meta property="og:image" content="http://example.com/source/_posts/%E7%90%86%E8%A7%A3JIT%E5%8D%B3%E6%97%B6%E7%BC%96%E8%AF%91%E5%99%A8/image.png">
+<meta property="og:image" content="http://example.com/2024/06/27/%E7%90%86%E8%A7%A3JIT%E5%8D%B3%E6%97%B6%E7%BC%96%E8%AF%91%E5%99%A8/image.png">
 <meta property="article:published_time" content="2024-06-27T02:31:35.000Z">
-<meta property="article:modified_time" content="2024-06-27T02:50:03.707Z">
+<meta property="article:modified_time" content="2024-06-27T03:28:03.725Z">
 <meta property="article:author" content="fzc">
 <meta property="article:tag" content="JVM">
 <meta property="article:tag" content="JIT">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://example.com/source/_posts/%E7%90%86%E8%A7%A3JIT%E5%8D%B3%E6%97%B6%E7%BC%96%E8%AF%91%E5%99%A8/image.png">
+<meta name="twitter:image" content="http://example.com/2024/06/27/%E7%90%86%E8%A7%A3JIT%E5%8D%B3%E6%97%B6%E7%BC%96%E8%AF%91%E5%99%A8/image.png">
 
 
 
@@ -346,7 +346,8 @@
 
       
         <h3 id="JIT的执行过程"><a href="#JIT的执行过程" class="headerlink" title="JIT的执行过程"></a>JIT的执行过程</h3><p>Java的执行过程整体可以分为两个部分，第一步由javac将源码编译成字节码，在这个过程中会进行词法分析、语法分析、语义分析，编译原理中这部分的编译称为前端编译。接下来无需编译直接逐条将字节码解释执行，在解释执行的过程中，虚拟机同时对程序运行的信息进行收集，在这些信息的基础上，编译器会逐渐发挥作用，它会进行后端编译——把字节码编译成机器码，但不是所有的代码都会被编译，只有被JVM认定为的热点代码，才可能被编译。</p>
-<p>怎么样才会被认为是热点代码呢？JVM中会设置一个阈值，当方法或者代码块的在一定时间内的调用次数超过这个阈值时就会被编译，存入codeCache中。当下次执行时，再遇到这段代码，就会从codeCache中读取机器码，直接执行，以此来提升程序运行的性能。整体的执行过程大致如下图所示：<br><img src="/source/_posts/%E7%90%86%E8%A7%A3JIT%E5%8D%B3%E6%97%B6%E7%BC%96%E8%AF%91%E5%99%A8/image.png" alt="图片"></p>
+<p>怎么样才会被认为是热点代码呢？JVM中会设置一个阈值，当方法或者代码块的在一定时间内的调用次数超过这个阈值时就会被编译，存入codeCache中。当下次执行时，再遇到这段代码，就会从codeCache中读取机器码，直接执行，以此来提升程序运行的性能。整体的执行过程大致如下图所示：</p>
+<img src="/2024/06/27/%E7%90%86%E8%A7%A3JIT%E5%8D%B3%E6%97%B6%E7%BC%96%E8%AF%91%E5%99%A8/image.png" class="">
 <h3 id="JVM中的编译器"><a href="#JVM中的编译器" class="headerlink" title="JVM中的编译器"></a>JVM中的编译器</h3><p>对于需要快速启动的，或者一些不会长期运行的服务，可以采用编译效率较高的C1，对应参数-client。长期运行的服务，或者对峰值性能有要求的后台服务，可以采用峰值性能更好的C2，对应参数-server。C1的编译速度更快，C2的编译质量更高</p>
 <h5 id="Client-Compiler"><a href="#Client-Compiler" class="headerlink" title="Client Compiler"></a>Client Compiler</h5><p>HotSpot VM带有一个Client Compiler C1编译器。这种编译器启动速度快，但是性能比较Server Compiler来说会差一些。C1会做三件事：</p>
 <ul>
