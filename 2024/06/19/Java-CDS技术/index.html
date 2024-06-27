@@ -68,7 +68,7 @@
 
 
 
-  <meta name="keywords" content="JVM,JMX,Java," />
+  <meta name="keywords" content="JVM,CDS," />
 
 
 
@@ -79,22 +79,19 @@
 
 
 
-<meta name="description" content="简介JMX(Java Management Extensions)是一个为应用程序植入管理功能的框架。JMX是一套标准的代理和服务，实际上，用户可以在任何Java应用程序中使用这些代理和服务实现管理。中间件软件WebLogic的管理页面就是基于JMX开发的，而JBoss则整个系统都基于JMX构架 架构图 1.最底层是各种MBean, MBean分为如下四种：  Standard MBean 这种类">
+<meta name="description" content="简介类的生命周期： 加载 验证 准备 解析 初始化在类加载阶段，如果JVM启动的时候需要加载成百上千个class，那么需要的就不是一个小数目了CDS全称是Class Data Sharing，就是通过将一组核心系统类（比如java.lang.String）装载到共享内存中，可以在多个 JVM 中共享这些类。我们知道在同一个物理机／虚拟机上启动多个JVM时，如果每个虚拟机都单独装载自己需要的所有类，">
 <meta property="og:type" content="article">
-<meta property="og:title" content="JMX技术解读">
-<meta property="og:url" content="http://example.com/2024/06/07/JMX%E6%8A%80%E6%9C%AF%E8%A7%A3%E8%AF%BB/index.html">
+<meta property="og:title" content="Java CDS技术">
+<meta property="og:url" content="http://example.com/2024/06/19/Java-CDS%E6%8A%80%E6%9C%AF/index.html">
 <meta property="og:site_name" content="fzc721216">
-<meta property="og:description" content="简介JMX(Java Management Extensions)是一个为应用程序植入管理功能的框架。JMX是一套标准的代理和服务，实际上，用户可以在任何Java应用程序中使用这些代理和服务实现管理。中间件软件WebLogic的管理页面就是基于JMX开发的，而JBoss则整个系统都基于JMX构架 架构图 1.最底层是各种MBean, MBean分为如下四种：  Standard MBean 这种类">
+<meta property="og:description" content="简介类的生命周期： 加载 验证 准备 解析 初始化在类加载阶段，如果JVM启动的时候需要加载成百上千个class，那么需要的就不是一个小数目了CDS全称是Class Data Sharing，就是通过将一组核心系统类（比如java.lang.String）装载到共享内存中，可以在多个 JVM 中共享这些类。我们知道在同一个物理机／虚拟机上启动多个JVM时，如果每个虚拟机都单独装载自己需要的所有类，">
 <meta property="og:locale">
-<meta property="og:image" content="http://example.com/source/_posts/JMX%E6%8A%80%E6%9C%AF%E8%A7%A3%E8%AF%BB/831179-20160924113748309-1785034710.png">
-<meta property="article:published_time" content="2024-06-07T01:59:27.000Z">
-<meta property="article:modified_time" content="2024-06-07T02:15:33.339Z">
+<meta property="article:published_time" content="2024-06-19T02:06:09.000Z">
+<meta property="article:modified_time" content="2024-06-19T02:23:18.861Z">
 <meta property="article:author" content="fzc">
 <meta property="article:tag" content="JVM">
-<meta property="article:tag" content="JMX">
-<meta property="article:tag" content="Java">
+<meta property="article:tag" content="CDS">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:image" content="http://example.com/source/_posts/JMX%E6%8A%80%E6%9C%AF%E8%A7%A3%E8%AF%BB/831179-20160924113748309-1785034710.png">
 
 
 
@@ -124,13 +121,13 @@
 
 
 
-  <link rel="canonical" href="http://example.com/2024/06/07/JMX技术解读/"/>
+  <link rel="canonical" href="http://example.com/2024/06/19/Java-CDS技术/"/>
 
 
 
 
 
-  <title>JMX技术解读 | fzc721216</title>
+  <title>Java CDS技术 | fzc721216</title>
   
 
 
@@ -257,7 +254,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2024/06/07/JMX%E6%8A%80%E6%9C%AF%E8%A7%A3%E8%AF%BB/">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2024/06/19/Java-CDS%E6%8A%80%E6%9C%AF/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="">
@@ -274,7 +271,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">JMX技术解读</h1>
+          <h1 class="post-title" itemprop="name headline">Java CDS技术</h1>
         
 
         <div class="post-meta">
@@ -286,8 +283,8 @@
               
                 <span class="post-meta-item-text">发表于</span>
               
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2024-06-07T09:59:27+08:00">
-                2024-06-07
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2024-06-19T10:06:09+08:00">
+                2024-06-19
               </time>
             
 
@@ -346,30 +343,38 @@
       
 
       
-        <h3 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h3><p>JMX(Java Management Extensions)是一个为应用程序植入管理功能的框架。JMX是一套标准的代理和服务，实际上，用户可以在任何Java应用程序中使用这些代理和服务实现管理。中间件软件WebLogic的管理页面就是基于JMX开发的，而JBoss则整个系统都基于JMX构架</p>
-<h3 id="架构图"><a href="#架构图" class="headerlink" title="架构图"></a>架构图</h3><p><img src="/source/_posts/JMX%E6%8A%80%E6%9C%AF%E8%A7%A3%E8%AF%BB/831179-20160924113748309-1785034710.png" alt="图片" title="图片"></p>
-<p>1.最底层是各种MBean, MBean分为如下四种：</p>
-<ul>
-<li>Standard MBean 这种类型的MBean最简单，它能管理的资源（包括属性，方法，时间）必须定义在接口中，然后MBean必须实现这个接口。它的命名也必须遵循一定的规范，例如我们的MBean为A，则接口必须为AMBean。</li>
-<li>Dynamic MBean	必须实现javax.management.DynamicMBean接口，所有的属性，方法都在运行时定义</li>
-<li>MXBean</li>
-<li>Open MBean</li>
-<li>Model MBean</li>
+        <h2 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h2><p>类的生命周期： 加载 验证 准备 解析 初始化<br>在类加载阶段，如果JVM启动的时候需要加载成百上千个class，那么需要的就不是一个小数目了<br>CDS全称是Class Data Sharing，就是通过将一组核心系统类（比如java.lang.String）装载到共享内存中，可以在多个 JVM 中共享这些类。我们知道在同一个物理机／虚拟机上启动多个JVM时，如果每个虚拟机都单独装载自己需要的所有类，启动成本和内存占用是比较高的。在JDK 1.5时，JAVA团队引入了CDS的概念，通过把一些核心类在每个JVM间共享，每个JVM只需要装载自己的应用类，启动时间减少了，另外核心类是共享的，所以JVM的内存占用也减少了。</p>
+<p>CDS使用的是一个只读的内存映射文件，它包含了核心类的内部表示，并映射到了每个JVM的堆中。这个文件可以由JRE创建，也可以按照CDS文档手工创建。到现在，JAVA 10扩展了CDS，允许应用类被共享，扩大了共享类的范围。</p>
+<h5 id="基本步骤"><a href="#基本步骤" class="headerlink" title="基本步骤"></a>基本步骤</h5><ul>
+<li><p>选择要归档的class，并创建一个class的列表，用在归档中。（ -XX:DumpLoadedClassList）</p>
+</li>
+<li><p>创建归档文件（-Xshare:dump和-XX:SharedArchiveFile）</p>
+</li>
+<li><p>使用归档文件（-Xshare:on 和 -XX:SharedArchiveFile）</p>
+</li>
 </ul>
-<p>2.中间层是提供对资源的注册和管理</p>
-<p>3.提供远程访问的入口</p>
-<h3 id="MXBean"><a href="#MXBean" class="headerlink" title="MXBean"></a>MXBean</h3><p>Java内置了一些MXBean，</p>
+<p>JDK12，JDK13默认情况下已经开启了AppCDS的支持。如果需要停用，我们可以添加 -Xshare:off。、</p>
+<h6 id="创建JDK-class-data-archive"><a href="#创建JDK-class-data-archive" class="headerlink" title="创建JDK class-data archive"></a>创建JDK class-data archive</h6><p>我们可以使用-Xshare:dump来创建JVM启动时候默认加载的Class-Data:</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -Xshare:dump -XX:SharedArchiveFile=/tmp/sharedarchive.jsa</span><br></pre></td></tr></table></figure>
+<p>默认情况下java shared archive file文件会创建在JAVA_HOME&#x2F;lib&#x2F;server&#x2F;下面,我们重新指定了目录</p>
+<h6 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h6><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -Xlog:class+load:file=/tmp/sharedarchive.log  -XX:SharedArchiveFile=/tmp/sharedarchive.jsa --enable-preview CDSHelloWorld </span><br></pre></td></tr></table></figure>
 <ul>
-<li>ClassLoadingMXBean      用于 Java 虚拟机的类加载系统的管理接口。</li>
-<li>CompilationMXBean       用于 Java 虚拟机的编译系统的管理接口。</li>
-<li>GarbageCollectorMXBean  用于 Java 虚拟机的垃圾回收的管理接口。</li>
-<li>MemoryManagerMXBean     内存管理器的管理接口。</li>
-<li>MemoryMXBean Java       虚拟机的内存系统的管理接口。</li>
-<li>MemoryPoolMXBean        内存池的管理接口。</li>
-<li>OperatingSystemMXBean   用于操作系统的管理接口，Java 虚拟机在此操作系统上运行。</li>
-<li>RuntimeMXBean Java      虚拟机的运行时系统的管理接口。</li>
-<li>ThreadMXBean   Java       虚拟机线程系统的管理接口。ManagementFactory.getThreadMXBean() 方法或从平台 MBeanServer 方法获得它。<br>在 MBeanServer 内唯一标识线程系统的 MXBean 的 ObjectName 是：<br>java.lang:type&#x3D;Threading</li>
+<li><p>-XX:SharedArchiveFile表示使用哪个具体的jsa文件来运行java程序。</p>
+</li>
+<li><p>-Xlog:class+load:file主要是做调试用的</p>
+</li>
 </ul>
+<p>上面写的是JDK自带类库的归档，如果是大型的项目，处理JDK自带的class之外，我们还可以将项目中共享的模块做成jsa文件，从而提升启动速度<br>XX:DumpLoadedClassList来生成应用程序加载class的列表</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -XX:DumpLoadedClassList=/tmp/classes.lst --enable-preview CDSHelloWorld </span><br></pre></td></tr></table></figure>
+<p>得到如下列表</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">java/io/Serializable</span><br><span class="line">java/lang/Comparable</span><br><span class="line">java/lang/CharSequence</span><br><span class="line">java/lang/constant/Constable</span><br><span class="line">java/lang/constant/ConstantDesc</span><br></pre></td></tr></table></figure>
+<p>用如上列表生成jsa文件</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -Xshare:dump -XX:SharedArchiveFile=/tmp/sharedarchive.jsa -XX:SharedClassListFile=/tmp/classes.lst  --enable-preview CDSHelloWorld </span><br></pre></td></tr></table></figure>
+<p>多了这个参数 -XX:SharedClassListFile，可以指定.lst类列表，就是我们上面生成的</p>
+<p>java13之后：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -XX:ArchiveClassesAtExit=/tmp/sharedarchive.jsa  --enable-preview CDSHelloWorld </span><br></pre></td></tr></table></figure>
+
+<p>更新：Spring6, SpringBoot 3.3等可以支持CDS</p>
 
       
     </div>
@@ -389,9 +394,7 @@
           
             <a href="/tags/JVM/" rel="tag"># JVM</a>
           
-            <a href="/tags/JMX/" rel="tag"># JMX</a>
-          
-            <a href="/tags/Java/" rel="tag"># Java</a>
+            <a href="/tags/CDS/" rel="tag"># CDS</a>
           
         </div>
       
@@ -404,8 +407,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/2024/04/07/%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%8A%A8%E6%80%81%E5%8C%96%E4%B8%8E%E7%9B%91%E6%8E%A7/" rel="next" title="线程池动态化与监控">
-                <i class="fa fa-chevron-left"></i> 线程池动态化与监控
+              <a href="/2024/06/11/Java-VarHandle%E5%8F%98%E9%87%8F%E5%8F%A5%E6%9F%84/" rel="next" title="Java VarHandle变量句柄">
+                <i class="fa fa-chevron-left"></i> Java VarHandle变量句柄
               </a>
             
           </div>
@@ -414,8 +417,8 @@
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/2024/06/07/lambda%E8%A1%A8%E8%BE%BE%E5%BC%8F%E9%87%8C%E5%BF%85%E9%A1%BB%E6%98%AFfinal%E5%8F%98%E9%87%8F%E7%9A%84%E9%97%AE%E9%A2%98/" rel="prev" title="lambda表达式里必须是final变量的问题">
-                lambda表达式里必须是final变量的问题 <i class="fa fa-chevron-right"></i>
+              <a href="/2024/06/27/Project-Leyden-%E4%BC%98%E5%8C%96Java%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E8%B5%84%E6%BA%90%E5%8D%A0%E7%94%A8/" rel="prev" title="Project Leyden: 优化 Java 程序启动时间与资源占用">
+                Project Leyden: 优化 Java 程序启动时间与资源占用 <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -548,7 +551,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AE%80%E4%BB%8B"><span class="nav-number">1.</span> <span class="nav-text">简介</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%9E%B6%E6%9E%84%E5%9B%BE"><span class="nav-number">2.</span> <span class="nav-text">架构图</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#MXBean"><span class="nav-number">3.</span> <span class="nav-text">MXBean</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%80%E4%BB%8B"><span class="nav-number">1.</span> <span class="nav-text">简介</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E5%9F%BA%E6%9C%AC%E6%AD%A5%E9%AA%A4"><span class="nav-number">1.0.0.1.</span> <span class="nav-text">基本步骤</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#%E5%88%9B%E5%BB%BAJDK-class-data-archive"><span class="nav-number">1.0.0.1.1.</span> <span class="nav-text">创建JDK class-data archive</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8"><span class="nav-number">1.0.0.1.2.</span> <span class="nav-text">使用</span></a></li></ol></li></ol></li></ol></li></ol></li></ol></div>
             
 
           </div>

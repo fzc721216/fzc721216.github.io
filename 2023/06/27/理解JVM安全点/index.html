@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next gemini use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css" />
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="JVM,SafePoint," />
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="探究安全点机制的起初是因为看了得物的一篇技术文章：https:&#x2F;&#x2F;tech.dewu.com&#x2F;article?id&#x3D;47 简介总结一下初识安全点学到的知识点：  JVM GC时需要让用户线程在安全点处停顿下来（Stop The World）抢先式中断：所有线程停止，没到安全点的继续运行到安全点。主动式中断的思想是当GC需要中断线程时，不直接对线程操作，仅仅简单地设置一个标志位，各个线程执行过程时不">
+<meta property="og:type" content="article">
+<meta property="og:title" content="理解JVM安全点">
+<meta property="og:url" content="http://example.com/2023/06/27/%E7%90%86%E8%A7%A3JVM%E5%AE%89%E5%85%A8%E7%82%B9/index.html">
+<meta property="og:site_name" content="fzc721216">
+<meta property="og:description" content="探究安全点机制的起初是因为看了得物的一篇技术文章：https:&#x2F;&#x2F;tech.dewu.com&#x2F;article?id&#x3D;47 简介总结一下初识安全点学到的知识点：  JVM GC时需要让用户线程在安全点处停顿下来（Stop The World）抢先式中断：所有线程停止，没到安全点的继续运行到安全点。主动式中断的思想是当GC需要中断线程时，不直接对线程操作，仅仅简单地设置一个标志位，各个线程执行过程时不">
+<meta property="og:locale">
+<meta property="og:image" content="http://example.com/source/_posts/%E7%90%86%E8%A7%A3JVM%E5%AE%89%E5%85%A8%E7%82%B9/image1.png">
+<meta property="og:image" content="http://example.com/source/_posts/%E7%90%86%E8%A7%A3JVM%E5%AE%89%E5%85%A8%E7%82%B9/image.png">
+<meta property="article:published_time" content="2023-06-27T01:44:56.000Z">
+<meta property="article:modified_time" content="2024-06-27T02:23:17.160Z">
+<meta property="article:author" content="fzc">
+<meta property="article:tag" content="JVM">
+<meta property="article:tag" content="SafePoint">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://example.com/source/_posts/%E7%90%86%E8%A7%A3JVM%E5%AE%89%E5%85%A8%E7%82%B9/image1.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '',
+    scheme: 'Gemini',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://example.com/2023/06/27/理解JVM安全点/"/>
+
+
+
+
+
+  <title>理解JVM安全点 | fzc721216</title>
+  
+
+
+
+
+
+
+
+
+<meta name="generator" content="Hexo 7.2.0"></head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">fzc721216</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-categories">
+          <a href="/categories/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-th"></i> <br />
+            
+            分类
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2023/06/27/%E7%90%86%E8%A7%A3JVM%E5%AE%89%E5%85%A8%E7%82%B9/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="fzc721216">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">理解JVM安全点</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2023-06-27T09:44:56+08:00">
+                2023-06-27
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/JVM/" itemprop="url" rel="index">
+                    <span itemprop="name">JVM</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>探究安全点机制的起初是因为看了得物的一篇技术文章：<a target="_blank" rel="noopener" href="https://tech.dewu.com/article?id=47">https://tech.dewu.com/article?id=47</a></p>
+<h3 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h3><p>总结一下初识安全点学到的知识点：</p>
+<ul>
+<li>JVM GC时需要让用户线程在安全点处停顿下来（Stop The World）抢先式中断：所有线程停止，没到安全点的继续运行到安全点。主动式中断的思想是当GC需要中断线程时，不直接对线程操作，仅仅简单地设置一个标志位，各个线程执行过程时不停地主动去轮询这个标志，一旦发现中断标志为真就自己在最近的安全点上主动中断挂起</li>
+<li>JVM会在方法调用、循环跳转、异常跳转等处放置安全点<br>后来发现，经过一些线上问题和网上看到有关安全点有趣的示例，发现安全点其实也不简单，不只有GC才会用到安全点</li>
+</ul>
+<h3 id="案例"><a href="#案例" class="headerlink" title="案例"></a>案例</h3><p><img src="/source/_posts/%E7%90%86%E8%A7%A3JVM%E5%AE%89%E5%85%A8%E7%82%B9/image1.png" alt="图片"><br><img src="/source/_posts/%E7%90%86%E8%A7%A3JVM%E5%AE%89%E5%85%A8%E7%82%B9/image.png" alt="图片"><br>从执行结果看，主线程在启动两个线程后进入睡眠状态，代码中指定睡眠时间为 1s，但是主线程却在 3s 多之后才睡眠结束。是什么导致了主线程睡过头了呢，从结果来看主线程睡觉结束时间和子线程结束时间是一致的。所以，我们有理由怀疑主线程没有按时提前结束应该是被两个子线程阻塞了。<br>原因：由于VMThread的某些操作需要STW，主线程在sleep结束前进入了JVM全局安全点，然后主线程要等待其他线程全部进入安全点，所以主线程被长时间没有进入安全点的其他线程给阻塞了。</p>
+<h3 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h3><p>添加JVM打印安全点日志参数-XX:+PrintSafepointStatistics后再执行上面的实例代码，可以从安全点日志中看到，JVM想要执行no vm operation，这个操作需要线程进入安全点，整个期间有12个线程，正在运行的线程有两个，需要等待这两个线程进入安全点，等待耗时2251ms。</p>
+<p>关于no vm operation:<br>在 JVM 正常运行的时候，如果设置了进入安全点的间隔，就会隔一段时间判断是否有代码缓存要清理，如果有，会进入安全点。这个触发条件不是 VM 操作，所以会将 _vmop_type 设置成-1，输出日志的时候打印对应的 「no vm operation」，也就是我们看到的安全点日志。</p>
+<p>在 VM 操作为空的情况下，只要满足以下 3 个条件，也是会进入安全点的：</p>
+<p>1、VMThread 处于正常运行状态</p>
+<p>2、设置了进入安全点的间隔时间</p>
+<p>3、SafepointALot 是否为 true 或者是否需要清理</p>
+<p>加上 -XX:+SafepointTimeout 和-XX:SafepointTimeoutDelay&#x3D;2000 参数后执行代码可以进一步看等待哪两个线程进入安全点</p>
+<p>用 Java -XX:+UnlockDiagnosticVMOptions -XX:+PrintFlagsFinal 2&gt;&amp;1 | grep Safepoint 命令查看 JVM 关于安全点的默认参数：<br>发现 GuaranteedSafepointInterval 默认设置成了 1 秒，每隔1s就会尝试进入安全点。<br>那么，修改GuaranteedSafepointInterval参数值，看看是否能阻止进入安全点。</p>
+<p>GuaranteedSafepointInterval参数是JVM诊断参数，修改这个参数的值，需要配合-XX:+UnlockDiagnosticVMOptions一起使用。</p>
+<p>通过 -XX:GuaranteedSafepointInterval &#x3D; 0 关闭定时进入安全点，代码1s正常结束<br>调大安全点间隔时间和关闭定时进入安全点的效果是一样的，也可以避免等待子线程进入安全点的</p>
+<p>假设现在有一个操作触发了某个 VM 线程所有线程需要进入 SafePoint，如果其他线程现在：</p>
+<ul>
+<li>运行字节码：运行字节码时，解释器会看线程是否被标记为 poll armed，如果是，VM 线程调用 SafepointSynchronize::block(JavaThread *thread)进行 block。</li>
+<li>运行 native 代码：当运行 native 代码时，VM 线程略过这个线程，但是给这个线程设置 poll armed，让它在执行完 native 代码之后，它会检查是否 poll armed，如果还需要停在 SafePoint，则直接 block。本案例的Thread.sleep()正是native方法</li>
+<li>运行 JIT 编译好的代码：由于运行的是编译好的机器码，直接查看本地 local polling page 是否为脏，如果为脏则需要 block。这个特性是在 Java 10 引入的 JEP 312: Thread-Local Handshakes 之后，才是只用检查本地 local polling page 是否为脏就可以了。</li>
+<li>处于 BLOCK 状态：在需要所有线程需要进入 SafePoint 的操作完成之前，不许离开 BLOCK 状态<br>处于线程切换状态或者处于 VM 运行状态：会一直轮询线程状态直到线程处于阻塞状态（线程肯定会变成上面说的那四种状态，变成哪个都会 block</li>
+</ul>
+<h3 id="子线程为什么无法进入安全点"><a href="#子线程为什么无法进入安全点" class="headerlink" title="子线程为什么无法进入安全点"></a>子线程为什么无法进入安全点</h3><p>现在已经知道了主线程为什么进入会进入安全点，以及主线程在哪里进入的安全点，按照已知知识点JVM会在循环跳转处和方法调用处放置安全点，为什么子线程没有进入安全点？</p>
+<h5 id="可数循环和不可数循环"><a href="#可数循环和不可数循环" class="headerlink" title="可数循环和不可数循环"></a>可数循环和不可数循环</h5><p>JVM为了避免安全点过多带来过重的负担，对循环有一项优化措施，认为循环次数较少的话，执行时间应该不会太长，所以使用int类型和范围更小的数据类型作为索引值的循环默认是不会被放置安全点的。这种循环被称为可数循环，相对应的，使用long或者范围更大的数据类型作为索引值的循环就被称为不可数循环，将被放置安全点。</p>
+<p>在示例代码中，子线程的循环索引值数据类型是int，也就是可数循环，所以JVM没有在循环跳转处放置安全点。把循环索引值数据类型改成long型，循环成为不可数循环，就能够成功在循环跳转处放置安全点，避免子线程长时间无法进入安全点阻塞主线程。</p>
+<p>其实，还可以通过-XX:+UseCountedLoopSafepoints参数关闭JVM 对可数循环放置安全点的优化。下面的执行结果可以看出，添加了-XX:+UseCountedLoopSafepoints参数后(也就是子线程也放置安全点)，也能让运行结果到达预期。</p>
+<h3 id="理解"><a href="#理解" class="headerlink" title="理解"></a>理解</h3><p>Safepoint 可以理解成是在代码执行过程中的一些特殊位置，当线程执行到这些位置的时候，线程可以暂停。在 SafePoint 保存了其他位置没有的一些当前线程的运行信息，供其他线程读取。这些信息包括：线程上下文的任何信息，例如对象或者非对象的内部指针等等。我们一般这么理解 SafePoint，就是线程只有运行到了 SafePoint 的位置，他的一切状态信息，才是确定的，也只有这个时候，才知道这个线程用了哪些内存，没有用哪些；并且，只有线程处于 SafePoint 位置，这时候对 JVM的堆栈信息进行修改，例如回收某一部分不用的内存，线程才会感知到，之后继续运行，每个线程都有一份自己的内存使用快照，这时候其他线程对于内存使用的修改，线程就不知道了，只有再进行到 SafePoint 的时候，才会感知。</p>
+<h3 id="什么时候会进入Safepoint"><a href="#什么时候会进入Safepoint" class="headerlink" title="什么时候会进入Safepoint"></a>什么时候会进入Safepoint</h3><p>（1）GC：由于需要每个线程的对象使用信息，以及回收一些对象，释放某些堆内存或者直接内存，所以需要 进入Safepoint来 Stop the world；</p>
+<p>（2）定时进入 SafePoint：每经过-XX:GuaranteedSafepointInterval 配置的时间，都会让所有线程进入 Safepoint，一旦所有线程都进入，立刻从 Safepoint 恢复。这个定时主要是为了一些没必要立刻 Stop the world 的任务执行，可以设置-XX:GuaranteedSafepointInterval&#x3D;0关闭这个定时。</p>
+<p>（3）由于 jstack，jmap 和 jstat 等命令，会导致 Stop the world：这种命令都需要采集堆栈信息，所以需要所有线程进入 Safepoint 并暂停。</p>
+<p>（4）偏向锁取消：锁大部分情况是没有竞争的（某个同步块大多数情况都不会出现多线程同时竞争锁），所以可以通过偏向来提高性能。即在无竞争时，之前获得锁的线程再次获得锁时，会判断是否偏向锁指向我，那么该线程将不用再次获得锁，直接就可以进入同步块。但是高并发的情况下，偏向锁会经常失效，导致需要取消偏向锁，取消偏向锁的时候，需要 Stop the world，因为要获取每个线程使用锁的状态以及运行状态。</p>
+<p>（5）Java Instrument 导致的 Agent 加载以及类的重定义：由于涉及到类重定义，需要修改栈上和这个类相关的信息，所以需要 Stop the world</p>
+<p>（6）Java Code Cache相关：当发生 JIT 编译优化或者去优化，需要 OSR 或者 Bailout 或者清理代码缓存的时候，由于需要读取线程执行的方法以及改变线程执行的方法，所以需要 Stop the world</p>
+<h3 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h3><p>安全点最主要的副作用就是可能导致STW时间过长，应该极力避免这点副作用。</p>
+<p>对第一个进入安全点的线程来说，STW是从它进入安全点开始的，如果有某个线程一直无法进入安全点就会导致进入安全点的时间一直处于等待状态，进而导致STW的时间过长。所以，应避免线程执行过长无法进入安全点的情况。</p>
+<p>可数循环体内执行时间过长以及JIT优化导致无法进入安全点的问题是最常见的无法进入安全点的情况。在写大循环的时候可以把循环索引值数据类型定义成long。</p>
+<p>在高并发应用中，偏向锁并不能带来性能提升，反而因为偏向锁取消带来了很多没必要的某些线程进入安全点 。所以建议关闭：-XX:-UseBiasedLocking。</p>
+<p>jstack，jmap 和 jstat 等命令，也会导致进入安全点。所以，生产环境应该关闭Thead dump的开关，避免dump时间过长导致应用STW时间过长。</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/JVM/" rel="tag"># JVM</a>
+          
+            <a href="/tags/SafePoint/" rel="tag"># SafePoint</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2023/06/06/%E6%B7%B1%E5%85%A5JVM%E5%85%83%E7%A9%BA%E9%97%B4/" rel="next" title="深入JVM元空间">
+                <i class="fa fa-chevron-left"></i> 深入JVM元空间
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2024/04/07/%E7%BA%BF%E7%A8%8B%E6%B1%A0%E5%8A%A8%E6%80%81%E5%8C%96%E4%B8%8E%E7%9B%91%E6%8E%A7/" rel="prev" title="线程池动态化与监控">
+                线程池动态化与监控 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name"></p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">10</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                <a href="/categories/index.html">
+                  <span class="site-state-item-count">3</span>
+                  <span class="site-state-item-name">分类</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">11</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AE%80%E4%BB%8B"><span class="nav-number">1.</span> <span class="nav-text">简介</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A1%88%E4%BE%8B"><span class="nav-number">2.</span> <span class="nav-text">案例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%AA%8C%E8%AF%81"><span class="nav-number">3.</span> <span class="nav-text">验证</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AD%90%E7%BA%BF%E7%A8%8B%E4%B8%BA%E4%BB%80%E4%B9%88%E6%97%A0%E6%B3%95%E8%BF%9B%E5%85%A5%E5%AE%89%E5%85%A8%E7%82%B9"><span class="nav-number">4.</span> <span class="nav-text">子线程为什么无法进入安全点</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E5%8F%AF%E6%95%B0%E5%BE%AA%E7%8E%AF%E5%92%8C%E4%B8%8D%E5%8F%AF%E6%95%B0%E5%BE%AA%E7%8E%AF"><span class="nav-number">4.0.1.</span> <span class="nav-text">可数循环和不可数循环</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%90%86%E8%A7%A3"><span class="nav-number">5.</span> <span class="nav-text">理解</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BB%80%E4%B9%88%E6%97%B6%E5%80%99%E4%BC%9A%E8%BF%9B%E5%85%A5Safepoint"><span class="nav-number">6.</span> <span class="nav-text">什么时候会进入Safepoint</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%85%B6%E4%BB%96"><span class="nav-number">7.</span> <span class="nav-text">其他</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2024</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">fzc</span>
+
+  
+</div>
+
+
+
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Gemini</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.4"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
