@@ -68,7 +68,7 @@
 
 
 
-  <meta name="keywords" content="JVM,CDS," />
+  <meta name="keywords" content="Rust," />
 
 
 
@@ -79,18 +79,17 @@
 
 
 
-<meta name="description" content="简介类的生命周期： 加载 验证 准备 解析 初始化在类加载阶段，如果JVM启动的时候需要加载成百上千个class，那么需要的就不是一个小数目了CDS全称是Class Data Sharing，就是通过将一组核心系统类（比如java.lang.String）装载到共享内存中，可以在多个 JVM 中共享这些类。我们知道在同一个物理机／虚拟机上启动多个JVM时，如果每个虚拟机都单独装载自己需要的所有类，">
+<meta name="description" content="，Rust 官方发布了一篇博客 Changes to impl Trait in Rust 2024，介绍了 Return Position Impl Trait (RPIT) 在使用和语法上的变化。新的设计对简化异步编程十分有用，故简述一下。 1. 背景RPIT 举例（在线执行）： 123fn process(data: &amp;Vec&lt;u8&gt;) -&gt; impl Iterat">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Java CDS技术">
-<meta property="og:url" content="http://example.com/2024/06/19/Java-CDS%E6%8A%80%E6%9C%AF/index.html">
+<meta property="og:title" content="Rust 2024 Return Position Impl Trait 的变化">
+<meta property="og:url" content="http://example.com/2025/12/23/Rust-2024-Return-Position-Impl-Trait-%E7%9A%84%E5%8F%98%E5%8C%96/index.html">
 <meta property="og:site_name" content="fzc721216">
-<meta property="og:description" content="简介类的生命周期： 加载 验证 准备 解析 初始化在类加载阶段，如果JVM启动的时候需要加载成百上千个class，那么需要的就不是一个小数目了CDS全称是Class Data Sharing，就是通过将一组核心系统类（比如java.lang.String）装载到共享内存中，可以在多个 JVM 中共享这些类。我们知道在同一个物理机／虚拟机上启动多个JVM时，如果每个虚拟机都单独装载自己需要的所有类，">
+<meta property="og:description" content="，Rust 官方发布了一篇博客 Changes to impl Trait in Rust 2024，介绍了 Return Position Impl Trait (RPIT) 在使用和语法上的变化。新的设计对简化异步编程十分有用，故简述一下。 1. 背景RPIT 举例（在线执行）： 123fn process(data: &amp;Vec&lt;u8&gt;) -&gt; impl Iterat">
 <meta property="og:locale">
-<meta property="article:published_time" content="2024-06-19T02:06:09.000Z">
-<meta property="article:modified_time" content="2024-06-19T02:23:18.861Z">
+<meta property="article:published_time" content="2025-12-23T01:16:14.000Z">
+<meta property="article:modified_time" content="2026-02-21T01:17:46.345Z">
 <meta property="article:author" content="fzc">
-<meta property="article:tag" content="JVM">
-<meta property="article:tag" content="CDS">
+<meta property="article:tag" content="Rust">
 <meta name="twitter:card" content="summary">
 
 
@@ -121,13 +120,13 @@
 
 
 
-  <link rel="canonical" href="http://example.com/2024/06/19/Java-CDS技术/"/>
+  <link rel="canonical" href="http://example.com/2025/12/23/Rust-2024-Return-Position-Impl-Trait-的变化/"/>
 
 
 
 
 
-  <title>Java CDS技术 | fzc721216</title>
+  <title>Rust 2024 Return Position Impl Trait 的变化 | fzc721216</title>
   
 
 
@@ -254,7 +253,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://example.com/2024/06/19/Java-CDS%E6%8A%80%E6%9C%AF/">
+    <link itemprop="mainEntityOfPage" href="http://example.com/2025/12/23/Rust-2024-Return-Position-Impl-Trait-%E7%9A%84%E5%8F%98%E5%8C%96/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="">
@@ -271,7 +270,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">Java CDS技术</h1>
+          <h1 class="post-title" itemprop="name headline">Rust 2024 Return Position Impl Trait 的变化</h1>
         
 
         <div class="post-meta">
@@ -283,8 +282,8 @@
               
                 <span class="post-meta-item-text">发表于</span>
               
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2024-06-19T10:06:09+08:00">
-                2024-06-19
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2025-12-23T09:16:14+08:00">
+                2025-12-23
               </time>
             
 
@@ -293,28 +292,6 @@
             
           </span>
 
-          
-            <span class="post-category" >
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/JVM/" itemprop="url" rel="index">
-                    <span itemprop="name">JVM</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
           
 
           
@@ -343,38 +320,22 @@
       
 
       
-        <h2 id="简介"><a href="#简介" class="headerlink" title="简介"></a>简介</h2><p>类的生命周期： 加载 验证 准备 解析 初始化<br>在类加载阶段，如果JVM启动的时候需要加载成百上千个class，那么需要的就不是一个小数目了<br>CDS全称是Class Data Sharing，就是通过将一组核心系统类（比如java.lang.String）装载到共享内存中，可以在多个 JVM 中共享这些类。我们知道在同一个物理机／虚拟机上启动多个JVM时，如果每个虚拟机都单独装载自己需要的所有类，启动成本和内存占用是比较高的。在JDK 1.5时，JAVA团队引入了CDS的概念，通过把一些核心类在每个JVM间共享，每个JVM只需要装载自己的应用类，启动时间减少了，另外核心类是共享的，所以JVM的内存占用也减少了。</p>
-<p>CDS使用的是一个只读的内存映射文件，它包含了核心类的内部表示，并映射到了每个JVM的堆中。这个文件可以由JRE创建，也可以按照CDS文档手工创建。到现在，JAVA 10扩展了CDS，允许应用类被共享，扩大了共享类的范围。</p>
-<h5 id="基本步骤"><a href="#基本步骤" class="headerlink" title="基本步骤"></a>基本步骤</h5><ul>
-<li><p>选择要归档的class，并创建一个class的列表，用在归档中。（ -XX:DumpLoadedClassList）</p>
-</li>
-<li><p>创建归档文件（-Xshare:dump和-XX:SharedArchiveFile）</p>
-</li>
-<li><p>使用归档文件（-Xshare:on 和 -XX:SharedArchiveFile）</p>
-</li>
-</ul>
-<p>JDK12，JDK13默认情况下已经开启了AppCDS的支持。如果需要停用，我们可以添加 -Xshare:off。、</p>
-<h6 id="创建JDK-class-data-archive"><a href="#创建JDK-class-data-archive" class="headerlink" title="创建JDK class-data archive"></a>创建JDK class-data archive</h6><p>我们可以使用-Xshare:dump来创建JVM启动时候默认加载的Class-Data:</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -Xshare:dump -XX:SharedArchiveFile=/tmp/sharedarchive.jsa</span><br></pre></td></tr></table></figure>
-<p>默认情况下java shared archive file文件会创建在JAVA_HOME&#x2F;lib&#x2F;server&#x2F;下面,我们重新指定了目录</p>
-<h6 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h6><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -Xlog:class+load:file=/tmp/sharedarchive.log  -XX:SharedArchiveFile=/tmp/sharedarchive.jsa --enable-preview CDSHelloWorld </span><br></pre></td></tr></table></figure>
-<ul>
-<li><p>-XX:SharedArchiveFile表示使用哪个具体的jsa文件来运行java程序。</p>
-</li>
-<li><p>-Xlog:class+load:file主要是做调试用的</p>
-</li>
-</ul>
-<p>上面写的是JDK自带类库的归档，如果是大型的项目，处理JDK自带的class之外，我们还可以将项目中共享的模块做成jsa文件，从而提升启动速度<br>XX:DumpLoadedClassList来生成应用程序加载class的列表</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -XX:DumpLoadedClassList=/tmp/classes.lst --enable-preview CDSHelloWorld </span><br></pre></td></tr></table></figure>
-<p>得到如下列表</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">java/io/Serializable</span><br><span class="line">java/lang/Comparable</span><br><span class="line">java/lang/CharSequence</span><br><span class="line">java/lang/constant/Constable</span><br><span class="line">java/lang/constant/ConstantDesc</span><br></pre></td></tr></table></figure>
-<p>用如上列表生成jsa文件</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -Xshare:dump -XX:SharedArchiveFile=/tmp/sharedarchive.jsa -XX:SharedClassListFile=/tmp/classes.lst  --enable-preview CDSHelloWorld </span><br></pre></td></tr></table></figure>
-<p>多了这个参数 -XX:SharedClassListFile，可以指定.lst类列表，就是我们上面生成的</p>
-<p>java13之后：</p>
-<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -XX:ArchiveClassesAtExit=/tmp/sharedarchive.jsa  --enable-preview CDSHelloWorld </span><br></pre></td></tr></table></figure>
-
-<p>更新：Spring6, SpringBoot 3.3等可以支持CDS</p>
+        <p>，Rust 官方发布了一篇博客 Changes to impl Trait in Rust 2024，介绍了 Return Position Impl Trait (RPIT) 在使用和语法上的变化。新的设计对简化异步编程十分有用，故简述一下。</p>
+<h3 id="1-背景"><a href="#1-背景" class="headerlink" title="1. 背景"></a>1. 背景</h3><p>RPIT 举例（在线执行）：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">fn <span class="title function_">process</span><span class="params">(data: &amp;Vec&lt;u8&gt;)</span> -&gt; impl Iterator&lt;Item = u8&gt; &#123;</span><br><span class="line">    data.iter().<span class="built_in">map</span>(|v| *v + <span class="number">1</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>上方的函数声明中隐藏了返回值的实际类型，返回 impl Iterator 表明它返回的是某种迭代器。调用方获得返回值后，也仅能通过迭代器的相关方法操作返回值。当然，编译器是知道该函数返回的是什么类型的，内部仍然是静态派发。</p>
+<p>虽然调用者不知道返回的类型，但需要让它知道它会继续借用 data 参数，这样才能保证合法使用返回的迭代器。RPIT 原先的规则是必须显式地在函数声明中注明生命周期，所以上方的代码可以这样修改（在线执行）：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">fn <span class="title function_">process</span><span class="params">(data: &amp;Vec&lt;u8&gt;)</span> -&gt; impl Iterator&lt;Item = u8&gt; + <span class="string">&#x27;_ &#123;</span></span><br><span class="line"><span class="string">    data.iter().map(|v| *v + 1)</span></span><br><span class="line"><span class="string">&#125;</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">// 更加显式的声明</span></span><br><span class="line"><span class="string">fn process&lt;&#x27;</span>d&gt;(data: &amp;<span class="string">&#x27;d Vec&lt;u8&gt;) -&gt; impl Iterator&lt;Item = u8&gt; + &#x27;</span>d &#123;</span><br><span class="line">    data.iter().<span class="built_in">map</span>(|v| *v + <span class="number">1</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="2-问题"><a href="#2-问题" class="headerlink" title="2. 问题"></a>2. 问题</h3><p>对于原先的 RPIT 方案，官方列举了以下问题：</p>
+<p>不是正确的默认行为：官方统计了 Rust 编译器和 crates.io 上的代码，大部分使用 RPIT 均需要使用生命周期，默认不使用生命周期的方案不方便<br>不够灵活：<br>难以解释：缺少生命周期声明时，难以向用户解释该错误<br>生命周期标注表达能力不足：将在下方举例说明<br>当前设计也与 Rust 的其他部分存在不一致，尤其是异步编程。<br>对于第 4 点，部分情况下当前 RPIT 的生命周期标注的表达能力是不足的，例如（在线执行）：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">fn process&lt;<span class="string">&#x27;a, T: std::fmt::Display&gt;(label: &amp;&#x27;</span>a str, data: Vec&lt;T&gt;) -&gt; impl Iterator&lt;Item = String&gt; + <span class="string">&#x27;a &#123;</span></span><br><span class="line"><span class="string">    data.into_iter().map(move |v| format!(&quot;&#123;&#125;-&#123;&#125;&quot;, label, v))</span></span><br><span class="line"><span class="string">&#125;</span></span><br></pre></td></tr></table></figure>
+<p>上述代码会报错：the parameter type T must be valid for the lifetime ‘a as defined here. 但实际上这一点是不需要的。出现该错误的原因有点微妙，因为返回的类型中我们需要使用到 label: ‘a，就目前的设计来看，我们只能把 ‘a 标注在返回类型的尾部。但显示地标注生命周期实际上产生了更严格的生命周期约束，+ ‘a 的语义是返回的隐藏类型的生命周期是 ‘a。但实际上该函数的返回类型是 std::iter::Map&lt;impl Iterator&lt;Item &#x3D; T&gt;, impl FnMut(T) -&gt; String + ‘a&gt;，当下的生命周期标注会间接地要求 T: ‘a，实际上这并不是需要的。当前的生命周期标注的表达能力无法处理该问题。</p>
+<p>对于第 5 点，异步函数实际上是一种语法糖，它会将异步函数解糖为一个 RPIT 函数：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">async fn <span class="title function_">process</span><span class="params">(data: &amp;Vec&lt;u8&gt;)</span> &#123;</span><br><span class="line">  ..</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// desugared</span></span><br><span class="line">fn <span class="title function_">process</span><span class="params">(</span></span><br><span class="line"><span class="params">    data: &amp;Vec&lt;u8&gt;</span></span><br><span class="line"><span class="params">)</span> -&gt; impl Future&lt;Output = ()&gt; &#123;</span><br><span class="line">    async move &#123;</span><br><span class="line">      ..</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>但实际上，由于生命周期使用规则存在问题，这并不是真正的脱糖。真正的脱糖是一种允许使用所有生命周期的特殊 RPIT，但这种形式的 RPIT 并未向最终用户公开，与默认规则的 RPIT 并不一致。RPITIT 中也有类似的不一致问题。</p>
+<h3 id="3-方案"><a href="#3-方案" class="headerlink" title="3. 方案"></a>3. 方案</h3><p>对于上述问题，Rust 2024 的解决方案是这样的：</p>
+<p>在默认情况下，RPIT 使用所有生命周期<br>新增 + use&lt;’x, T&gt; 语法，精确指定使用到的生命周期<br>新特性下，之前报错的代码可以顺利编译了（在线执行）：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">fn <span class="title function_">process</span><span class="params">(data: &amp;Vec&lt;u8&gt;)</span> -&gt; impl Iterator&lt;Item = u8&gt; &#123;</span><br><span class="line">    data.iter().<span class="built_in">map</span>(|v| *v + <span class="number">1</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
       
     </div>
@@ -392,9 +353,7 @@
       
         <div class="post-tags">
           
-            <a href="/tags/JVM/" rel="tag"># JVM</a>
-          
-            <a href="/tags/CDS/" rel="tag"># CDS</a>
+            <a href="/tags/Rust/" rel="tag"># Rust</a>
           
         </div>
       
@@ -407,8 +366,8 @@
         <div class="post-nav">
           <div class="post-nav-next post-nav-item">
             
-              <a href="/2024/06/11/Java-VarHandle%E5%8F%98%E9%87%8F%E5%8F%A5%E6%9F%84/" rel="next" title="Java VarHandle变量句柄">
-                <i class="fa fa-chevron-left"></i> Java VarHandle变量句柄
+              <a href="/2025/12/21/Rust%E7%9A%84Future%E5%92%8CPin/" rel="next" title="Rust的Future和Pin">
+                <i class="fa fa-chevron-left"></i> Rust的Future和Pin
               </a>
             
           </div>
@@ -417,8 +376,8 @@
 
           <div class="post-nav-prev post-nav-item">
             
-              <a href="/2024/06/27/Project-Leyden-%E4%BC%98%E5%8C%96Java%E7%A8%8B%E5%BA%8F%E5%90%AF%E5%8A%A8%E6%97%B6%E9%97%B4%E4%B8%8E%E8%B5%84%E6%BA%90%E5%8D%A0%E7%94%A8/" rel="prev" title="Project Leyden: 优化 Java 程序启动时间与资源占用">
-                Project Leyden: 优化 Java 程序启动时间与资源占用 <i class="fa fa-chevron-right"></i>
+              <a href="/2026/12/28/%E5%9C%A8-CMake-C-%E7%8E%AF%E5%A2%83%E4%B8%AD%E5%BC%95%E5%85%A5-Rust/" rel="prev" title="在 CMake C++ 环境中引入 Rust">
+                在 CMake C++ 环境中引入 Rust <i class="fa fa-chevron-right"></i>
               </a>
             
           </div>
@@ -551,7 +510,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AE%80%E4%BB%8B"><span class="nav-number">1.</span> <span class="nav-text">简介</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#%E5%9F%BA%E6%9C%AC%E6%AD%A5%E9%AA%A4"><span class="nav-number">1.0.0.1.</span> <span class="nav-text">基本步骤</span></a><ol class="nav-child"><li class="nav-item nav-level-6"><a class="nav-link" href="#%E5%88%9B%E5%BB%BAJDK-class-data-archive"><span class="nav-number">1.0.0.1.1.</span> <span class="nav-text">创建JDK class-data archive</span></a></li><li class="nav-item nav-level-6"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8"><span class="nav-number">1.0.0.1.2.</span> <span class="nav-text">使用</span></a></li></ol></li></ol></li></ol></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#1-%E8%83%8C%E6%99%AF"><span class="nav-number">1.</span> <span class="nav-text">1. 背景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-%E9%97%AE%E9%A2%98"><span class="nav-number">2.</span> <span class="nav-text">2. 问题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-%E6%96%B9%E6%A1%88"><span class="nav-number">3.</span> <span class="nav-text">3. 方案</span></a></li></ol></div>
             
 
           </div>
